@@ -1,2 +1,1 @@
-# dep_project_RB
-# dep_project_RB
+Depression Detection from Reddit Data using Ruled-Based model
