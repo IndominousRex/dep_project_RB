@@ -1,0 +1,43 @@
+\bget|feel\b\s+(\w+\s+){0,3}\bdepressed\b
+\bfeel|feeling\b\s+(\w+\s+){0,3}\bhopeless|hopelessness\b
+\bcant|cannot\b\s+(\w+\s+){0,3}\bstop\b\s+(\w+\s+){0,3}\bcry|crying\b
+\btherapy\b\s+(\w+\s+){0,3}\bhelp|helps\b
+\blife\b\s+(\w+\s+){0,3}\buseless\b
+\bno|never\b\s+(\w+\s+){0,3}\bmotivation\b
+\bam|feel\b\s+(\w+\s+){0,3}\bmiserable|alone\b
+\bpains|hurts|hurt\b\s+(\w+\s+){0,3}\banyone|me|myself\b
+\bcant|cannot\b\s+(\w+\s+){0,3}\bfeel|do\b\s+(\w+\s+){0,3}\banything\b
+\bnobody|no one\b\s+(\w+\s+){0,3}\bunderstands|understand\b
+\bwant to|feel like\b\s+(\w+\s+){0,3}\bcut|cutting\b\s+(\w+\s+){0,3}\bmyself\b
+\bfeel|am|im\b\s+(\w+\s+){0,3}\bworthless\b
+\bfeel\b\s+(\w+\s+){0,3}\bempty\b
+\bit|i\b\s+(\w+\s+){0,3}\bhurt|hurting\b
+\blife|lives\b\s+\bis|are\bs+(\w+\s+){0,3}\buseless\b
+\bkill|killed\b\s+\bmyself|him|her|them|someone|somebody\b
+\bi\b\s+(\w+\s+){0,5}\brape|raped|assaulted|assault\b
+\bdo not|don't|dont\b\s+\bwant to live\b
+\bhate|hatred\b\s+(\w+\s+){0,3}\bmyself\b
+\btried\b\s+(\w+\s+){0,3}\bself-help|self help\b
+\bfeel|feels|felt\b\s+(\w+\s+){0,5}\bfailure\b
+\bhave|had|having\b\s+(\w+\s+){0,3}\bbreakdown\b
+\bgetting|feeling\b\s+(\w+\s+){0,3}\bsad\b
+\bwant|wanting\b\s+(\w+\s+){0,3}\bdie|death\b
+\bi am|im|i'm\b\s+(\w+\s+){0,3}\bstuggling\b
+\bi|me\b\s+(\w+\s+){0,3}\bdisorder\b
+\bi|me\b\s+(\w+\s+){0,3}\bcan not|can't|cant|do not|dont|don't|not\b\s+(\w+\s+){0,3}\bfeel|feeling happy\b
+\bi\b\s+(\w+\s+){0,3}\bmood swing|swings\b
+\bi\b\s+(\w+\s+){0,3}\bno|not\b\s+(\w+\s+){0,3}\bto do with my life\b
+\bi|me\b\s+(\w+\s+){0,3}\bcry|crying\b
+\bi|i'm|(i am) sick of\b
+\bi|ive|i've|im|i'm\b\s+(\w+\s+){0,10}\bantidepressant|antidepressants\b
+\bwrong with me\b
+\bi\b\s+(\w+\s+){0,3}\bnot|never\b\s+(\w+\s+){0,3}\bgood enough\b
+\bi\b\s+(\w+\s+){0,3}\bno energy\b
+\bi\b\s+(\w+\s+){0,3}\bno|not|without purpose\b
+\b(empty feeling)|(feeling empty)\b
+\bdeath\b\s+(\w+\s+){0,8}\brelief\b
+\bi\b\s+(\w+\s+){0,3}\bsuicidal thoughts\b
+\bi|im|i'm\b\s+(\w+\s+){0,3}\btrapped\b
+\bi|im\b\s+(\w+\s+){0,3}\bburden\b
+\bi\b\s+(\w+\s+){0,10}\bdepressed\b
+\bi\b\s+(\w+\s+){0,3}\b(end it)\b
