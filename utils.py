@@ -8,7 +8,7 @@ def save_model(model: torch.nn.Module, model_name: str):
     target_dir_path.mkdir(parents=True, exist_ok=True)
 
     # Create model save path
-    model_save_path = target_dir_path / model_name
+    model_save_path = target_dir_path / f"{model_name}.pth"
 
     # Save the model state_dict()
     # print(f" Saving model to: {model_save_path}")
@@ -18,7 +18,7 @@ def save_model(model: torch.nn.Module, model_name: str):
 def load_model(model: torch.nn.Module, filename: str):
     # Create model save path
     target_dir_path = Path("models")
-    model_save_path = target_dir_path / filename
+    model_save_path = target_dir_path / f"{filename}.pth"
 
     # Loading the model state_dict()
     model.load_state_dict(torch.load(model_save_path))
