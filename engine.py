@@ -1,24 +1,36 @@
 import torch
 from tqdm.auto import tqdm
+import utils
 
-# from sklearn.metrics import f1_score
-from torchmetrics.classification import BinaryF1Score, BinaryAccuracy
+from torchmetrics.classification import (
+    BinaryAccuracy,
+    BinaryPrecision,
+    BinaryRecall,
+    BinaryF1Score,
+)
+import torchmetrics.classification.f_beta
+import torchmetrics.classification.accuracy
+import torchmetrics.classification.precision_recall
+import torch.utils.data
 
 
 def train_step(
     model: torch.nn.Module,
-    dataloader: torch.utils.data.DataLoader,  # type: ignore
+    dataloader: torch.utils.data.DataLoader,
     loss_fn: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
-    f1_fn,
-    acc_fn,
+    acc_fn: torchmetrics.classification.accuracy.BinaryAccuracy,
+    prec_fn: torchmetrics.classification.precision_recall.BinaryPrecision,
+    recall_fn: torchmetrics.classification.precision_recall.BinaryRecall,
+    f1_fn: torchmetrics.classification.f_beta.BinaryF1Score,
+    network="rule",
 ):
     # Put model in train mode
     model.train()
 
     # Setup train loss and train accuracy values
-    train_loss, train_f1, train_acc = 0, 0, 0
+    train_loss, train_acc, train_precision, train_recall, train_f1 = 0, 0, 0, 0, 0
 
     # Loop through data loader data batches
     for batch, (y, X, offsets) in enumerate(dataloader):
@@ -42,49 +54,49 @@ def train_step(
         optimizer.step()
 
         # Generating the predicted values from the logits
-        y_pred = torch.argmax(train_pred_logits, dim=1)
+        # argmax is used for the binary classifier to be used along with nn.CrossEntropyLoss
+        # sigmoid is used for the multi label prediction of the rule network to be used along with nn.BCEWithLogitsLoss
+        if network == "classification":
+            train_pred = torch.argmax(train_pred_logits, dim=1)
+        else:
+            train_pred = torch.sigmoid(train_pred_logits)
+            train_pred[train_pred >= 0.5] = 1
+            train_pred[train_pred < 0.5] = 1
 
-        # y_pred = torch.sigmoid(y_pred_logits)
-        # y_pred[y_pred >= 0.5] = 1
-        # y_pred[y_pred < 0.5] = 1
+        # aggregating the metrics for the batch
+        train_acc += acc_fn(train_pred, y).cpu().numpy()
+        train_precision += prec_fn(train_pred, y).cpu().numpy()
+        train_recall += recall_fn(train_pred, y).cpu().numpy()
+        train_f1 += f1_fn(train_pred, y).cpu().numpy()
 
-        train_f1 += f1_fn(y_pred, y).cpu().numpy()
-        train_acc += acc_fn(y_pred, y).cpu().numpy()
-        # temp = y - y_pred_logits
-        # c = 0
-        # for i in temp.reshape(-1):
-        #     if i.abs() < 0.5:
-        #         c += 1
-        # batch_acc += c / num_classes
-
-        # train_acc += c / len(y) / len(y[1])
-
-        # train_acc += (y_pred_class == y).sum().item() / len(y_pred)
-        # print(y_pred, y_pred_class, train_prec, "\n")
-        # break
-
-    # Adjust metrics to get average loss and accuracy per batch
+    # Adjust metrics to get average
     train_loss /= len(dataloader)
-    train_f1 /= len(dataloader)
     train_acc /= len(dataloader)
-    return train_loss, train_f1, train_acc
+    train_precision /= len(dataloader)
+    train_recall /= len(dataloader)
+    train_f1 /= len(dataloader)
+
+    return train_loss, train_acc, train_precision, train_recall, train_f1
 
 
 def test_step(
     model: torch.nn.Module,
-    dataloader: torch.utils.data.DataLoader,  # type: ignore
+    dataloader: torch.utils.data.DataLoader,
     loss_fn: torch.nn.Module,
     device: torch.device,
-    f1_fn,
-    acc_fn,
+    acc_fn: torchmetrics.classification.accuracy.BinaryAccuracy,
+    prec_fn: torchmetrics.classification.precision_recall.BinaryPrecision,
+    recall_fn: torchmetrics.classification.precision_recall.BinaryRecall,
+    f1_fn: torchmetrics.classification.f_beta.BinaryF1Score,
+    network="rule",
 ):
     # Put model in eval mode
     model.eval()
 
     # Setup test loss and test accuracy values
-    test_loss, test_f1, test_acc = 0, 0, 0
-    # y_true, y_pred = [], []
-    # Turn on inference context manager
+    test_loss, test_acc, test_precision, test_recall, test_f1 = 0, 0, 0, 0, 0
+
+    # Using inference mode the disable gradient backpropagaton
     with torch.inference_mode():
         # Loop through DataLoader batches
         for batch, (y, X, offsets) in enumerate(dataloader):
@@ -95,124 +107,139 @@ def test_step(
             test_pred_logits = model(X, offsets)
 
             # 2. Calculate and accumulate loss
-
             loss = loss_fn(test_pred_logits, y)
             test_loss += loss.item()
 
-            # Calculate and accumulate accuracy
-            # test_pred = torch.sigmoid(test_pred_logits)
-            # test_pred[test_pred >= 0.5] = 1
-            # test_pred[test_pred < 0.5] = 1
+            if network == "classification":
+                test_pred = torch.argmax(test_pred_logits, dim=1)
+            else:
+                test_pred = torch.sigmoid(test_pred_logits)
+                test_pred[test_pred >= 0.5] = 1
+                test_pred[test_pred < 0.5] = 1
 
-            test_pred = torch.argmax(test_pred_logits, dim=1)
-
-            test_f1 += f1_fn(test_pred, y).cpu().numpy()
             test_acc += acc_fn(test_pred, y).cpu().numpy()
-            # temp = y - test_pred
-            # c = 0
-            # for i in temp.reshape(-1):
-            #     if i.abs() < 0.5:
-            #         c += 1
-            #     # batch_acc += c / num_classes
-
-            # test_acc += c / len(y) / len(y[1])
-
-            # break
+            test_precision += prec_fn(test_pred, y).cpu().numpy()
+            test_recall += recall_fn(test_pred, y).cpu().numpy()
+            test_f1 += f1_fn(test_pred, y).cpu().numpy()
 
     # Adjust metrics to get average loss and accuracy per batch
     test_loss /= len(dataloader)
-    test_f1 = test_f1 / len(dataloader)
-    test_acc = test_acc / len(dataloader)
+    test_acc /= len(dataloader)
+    test_precision /= len(dataloader)
+    test_recall /= len(dataloader)
+    test_f1 /= len(dataloader)
 
-    return test_loss, test_f1, test_acc
+    return test_loss, test_acc, test_precision, test_recall, test_f1
 
 
 def train(
     model: torch.nn.Module,
-    train_dataloader: torch.utils.data.DataLoader,  # type: ignore
-    test_dataloader: torch.utils.data.DataLoader,  # type: ignore
+    train_dataloader: torch.utils.data.DataLoader,
+    test_dataloader: torch.utils.data.DataLoader,
     optimizer: torch.optim.Optimizer,
     loss_fn: torch.nn.Module,
     epochs: int,
     device: torch.device,
-    num_labels: int,
+    scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau,
+    model_name: str,
+    network="rule",
 ):
-    # initialising functions tp calaculate the model metrics
-    f1_fn = BinaryF1Score().to(device)
+    # initialising functions to calaculate the model metrics
     acc_fn = BinaryAccuracy().to(device)
+    prec_fn = BinaryPrecision().to(device)
+    recall_fn = BinaryRecall().to(device)
+    f1_fn = BinaryF1Score().to(device)
 
     # Create empty results dictionary
     results = {
         "train_loss": [],
-        "train_f1": [],
         "train_acc": [],
+        "train_precision": [],
+        "train_recall": [],
+        "train_f1": [],
         "test_loss": [],
-        "test_f1": [],
         "test_acc": [],
+        "test_precision": [],
+        "test_recall": [],
+        "test_f1": [],
     }
 
-    # Make sure model on target device
+    # Make sure model is on target device
     model.to(device)
 
-    best_test_loss = float("inf")
-    patience = 5  # Number of epochs to wait before decreasing learning rate
-    early_stop_counter = 0
+    best_test_f1 = -1
+    best_epoch = 0
+    # patience = 5  # Number of epochs to wait before decreasing learning rate
+    early_stop_threshold = 5
 
     # Loop through training and testing steps for a number of epochs
     for epoch in tqdm(range(epochs)):
-        train_loss, train_f1, train_acc = train_step(
+        train_loss, train_acc, train_precision, train_recall, train_f1 = train_step(
             model=model,
             dataloader=train_dataloader,
             loss_fn=loss_fn,
             optimizer=optimizer,
             device=device,
-            f1_fn=f1_fn,
             acc_fn=acc_fn,
+            prec_fn=prec_fn,
+            recall_fn=recall_fn,
+            f1_fn=f1_fn,
+            network=network,
         )
-        test_loss, test_f1, test_acc = test_step(
+
+        test_loss, test_acc, test_precision, test_recall, test_f1 = test_step(
             model=model,
             dataloader=test_dataloader,
             loss_fn=loss_fn,
             device=device,
-            f1_fn=f1_fn,
             acc_fn=acc_fn,
+            prec_fn=prec_fn,
+            recall_fn=recall_fn,
+            f1_fn=f1_fn,
+            network=network,
         )
 
-        if test_loss < best_test_loss:
-            best_test_loss = test_loss
-            early_stop_counter = 0
-        else:
-            early_stop_counter += 1
+        scheduler.step(test_f1)
 
-        if early_stop_counter >= patience:
-            for param_group in optimizer.param_groups:
-                param_group["lr"] *= 0.1  # Reduce learning rate by a factor of 10
-                print(f"Lr reduced to {param_group['lr']}\n")
-            early_stop_counter = 0  # Reset early stopping counter
+        if test_f1 > best_test_f1:
+            best_epoch = epoch
+            best_test_f1 = test_f1
+            utils.save_model(model, f"{network}_{model_name}_best_model")
+        elif epoch - best_epoch > early_stop_threshold:
+            print(f"\nEarly stopped training at epoch: {epoch}")
+            print(f"Best test F1 score: {best_test_f1:.4f}")
+            break
 
         # Print out what's happening
         print(
-            "\n"
-            f"Epoch: {epoch+1} | "
+            f"\nEpoch: {epoch+1} | "
             f"train_loss: {train_loss:.4f} | "
-            f"train_f1: {train_f1:.4f} | "
             f"train_acc: {train_acc:.4f} | "
+            f"train_prec: {train_precision:.4f} | "
+            f"train_recall: {train_recall:.4f} | "
+            f"train_f1: {train_f1:.4f} | "
             f"test_loss: {test_loss:.4f} | "
+            f"test_acc: {test_acc:.4f} | "
+            f"test_prec: {test_precision:.4f} | "
+            f"test_recall: {test_recall:.4f} | "
             f"test_f1: {test_f1:.4f} | "
-            f"test_acc: {test_acc:.4f} |"
         )
 
-        if early_stop_counter >= patience:
-            print("Early stopping due to increasing test loss.")
-            break
+        # if early_stop_counter >= patience:
+        #     print("Early stopping due to increasing test loss.")
+        #     break
 
         # Update results dictionary
         results["train_loss"].append(train_loss)
-        results["train_f1"].append(train_f1)
         results["train_acc"].append(train_acc)
+        results["train_precision"].append(train_precision)
+        results["train_recall"].append(train_recall)
+        results["train_f1"].append(train_f1)
         results["test_loss"].append(test_loss)
-        results["test_f1"].append(test_f1)
         results["test_acc"].append(test_acc)
+        results["test_precision"].append(test_precision)
+        results["test_recall"].append(test_recall)
+        results["test_f1"].append(test_f1)
 
     # Return the filled results at the end of the epochs
     return results
