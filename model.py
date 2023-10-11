@@ -43,11 +43,13 @@ class RuleNetwork(nn.Module):
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=False)
         self.MLP = nn.Sequential(
             nn.Linear(embed_dim, num_nodes),
+            nn.LayerNorm(num_nodes),
             nn.ReLU(),
-            nn.Dropout(),
+            # nn.Dropout(),
             nn.Linear(num_nodes, num_nodes),
+            nn.LayerNorm(num_nodes),
             nn.ReLU(),
-            nn.Dropout(),
+            # nn.Dropout(),
             nn.Linear(num_nodes, num_class),
         )
 

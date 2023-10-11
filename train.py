@@ -24,7 +24,9 @@ NUM_NODES = args.num_hidden_nodes
 NETWORK = args.network_name
 NUM_LABELS = 43 if NETWORK == "rule" else 2
 MODEL_NAME = args.model_name
-RANDOM_STATE = 12345
+PATIENCE = 2 if NETWORK == "classification" else 5
+RANDOM_STATE = 42
+
 # setting target device
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -52,7 +54,10 @@ else:
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 # scheduler = lr_scheduler.StepLR(optimizer)
-scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, "max", patience=2, verbose=True)
+
+scheduler = lr_scheduler.ReduceLROnPlateau(
+    optimizer, "max", patience=PATIENCE, verbose=True
+)
 
 # print(model)
 # printing model summary
@@ -85,7 +90,9 @@ results = train(
 )
 
 # saving model results in pickle file
-pickle.dump(results, open(f"results/{MODEL_NAME}_results.pkl", "wb"), protocol=-1)
+pickle.dump(
+    results, open(f"results/{NETWORK}_{MODEL_NAME}_results.pkl", "wb"), protocol=-1
+)
 
 # # saving the model
-# save_model(model=model, model_name=f"{MODEL_NAME}.pth")
+save_model(model, f"{NETWORK}_{MODEL_NAME}_final_model.pth")

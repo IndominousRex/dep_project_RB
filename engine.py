@@ -29,7 +29,7 @@ def train_step(
     # Put model in train mode
     model.train()
 
-    # Setup train loss and train accuracy values
+    # Setup train metrics
     train_loss, train_acc, train_precision, train_recall, train_f1 = 0, 0, 0, 0, 0
 
     # Loop through data loader data batches
@@ -61,7 +61,7 @@ def train_step(
         else:
             train_pred = torch.sigmoid(train_pred_logits)
             train_pred[train_pred >= 0.5] = 1
-            train_pred[train_pred < 0.5] = 1
+            train_pred[train_pred < 0.5] = 0
 
         # aggregating the metrics for the batch
         train_acc += acc_fn(train_pred, y).cpu().numpy()
@@ -93,7 +93,7 @@ def test_step(
     # Put model in eval mode
     model.eval()
 
-    # Setup test loss and test accuracy values
+    # Setup test metrics
     test_loss, test_acc, test_precision, test_recall, test_f1 = 0, 0, 0, 0, 0
 
     # Using inference mode the disable gradient backpropagaton
@@ -115,7 +115,7 @@ def test_step(
             else:
                 test_pred = torch.sigmoid(test_pred_logits)
                 test_pred[test_pred >= 0.5] = 1
-                test_pred[test_pred < 0.5] = 1
+                test_pred[test_pred < 0.5] = 0
 
             test_acc += acc_fn(test_pred, y).cpu().numpy()
             test_precision += prec_fn(test_pred, y).cpu().numpy()
@@ -167,10 +167,9 @@ def train(
     # Make sure model is on target device
     model.to(device)
 
-    best_test_f1 = -1
+    best_acc = -1
     best_epoch = 0
-    # patience = 5  # Number of epochs to wait before decreasing learning rate
-    early_stop_threshold = 5
+    early_stop_threshold = 5 if network == "classification" else 20
 
     # Loop through training and testing steps for a number of epochs
     for epoch in tqdm(range(epochs)):
@@ -199,15 +198,16 @@ def train(
             network=network,
         )
 
-        scheduler.step(test_f1)
+        scheduler.step(test_acc)
 
-        if test_f1 > best_test_f1:
+        if test_acc > best_acc:
             best_epoch = epoch
-            best_test_f1 = test_f1
-            utils.save_model(model, f"{network}_{model_name}_best_model")
+            best_acc = test_acc
+            utils.save_model(model, f"{network}_{model_name}_best_model.pth")
+
         elif epoch - best_epoch > early_stop_threshold:
             print(f"\nEarly stopped training at epoch: {epoch}")
-            print(f"Best test F1 score: {best_test_f1:.4f}")
+            print(f"Best test accuracy : {best_acc:.4f}")
             break
 
         # Print out what's happening
@@ -222,12 +222,8 @@ def train(
             f"test_acc: {test_acc:.4f} | "
             f"test_prec: {test_precision:.4f} | "
             f"test_recall: {test_recall:.4f} | "
-            f"test_f1: {test_f1:.4f} | "
+            f"test_f1: {test_f1:.4f} | \n"
         )
-
-        # if early_stop_counter >= patience:
-        #     print("Early stopping due to increasing test loss.")
-        #     break
 
         # Update results dictionary
         results["train_loss"].append(train_loss)
@@ -241,5 +237,5 @@ def train(
         results["test_recall"].append(test_recall)
         results["test_f1"].append(test_f1)
 
-    # Return the filled results at the end of the epochs
+    # Return the calculated results at the end of the epochs or after early stopping
     return results

@@ -6,7 +6,7 @@ from torchtext.data.utils import get_tokenizer
 from torchtext.vocab import build_vocab_from_iterator
 from torch.utils.data import DataLoader
 
-RANDOM_STATE = 12345
+RANDOM_STATE = 42
 device = "cuda:0"  # if torch.cuda.is_available() else "cpu"
 
 random.seed(RANDOM_STATE)
@@ -63,7 +63,7 @@ def collate_batch(batch):
         text_list.append(processed_text)
         offsets.append(processed_text.size(0))
 
-    label_list = torch.tensor(label_list, dtype=torch.int64)
+    label_list = torch.tensor(label_list, dtype=torch.float32)
     offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)
     text_list = torch.cat(text_list)
 
@@ -84,6 +84,8 @@ def get_dataloaders(file_name, batch_size):
     print("Done!")
 
     data = random.sample(data, len(data))
+
+    # data = data[:350]
 
     print("Creating dataloaders...")
 
