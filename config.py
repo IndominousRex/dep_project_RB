@@ -5,40 +5,63 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "model_name",
-        help="name of the model to be saved",
-        type=str,
-    )
-    parser.add_argument(
-        "--learning_rate", help="learning rate of the model", type=float, default=3e-4
-    )
-    parser.add_argument(
-        "--batch_size", help="batch size for training", type=int, default=16
-    )
-    parser.add_argument(
         "--epochs",
-        help="number of epochs to run the training for",
+        "-e",
+        help="number of epochs to run the training for (default: 100)",
         type=int,
         default=100,
     )
     parser.add_argument(
-        "--embed_dim",
-        help="size of the embedding vector for each token",
+        "--learning_rate",
+        "-lr",
+        help="learning rate of the model (default: 3e-4)",
+        type=float,
+        default=3e-4,
+    )
+    parser.add_argument(
+        "--patience",
+        "-p",
+        help="Number of epochs with no improvement after which learning rate will be reduced (default: 5)",
+        type=int,
+        default=5,
+    )
+    parser.add_argument(
+        "--batch_size",
+        "-bs",
+        help="batch size for training (default: 16)",
+        type=int,
+        default=16,
+    )
+
+    parser.add_argument(
+        "--rule_embed_dim",
+        "-red",
+        help="size of the embedding vector for each token in the rule model (default: 256)",
         type=int,
         default=256,
     )
     parser.add_argument(
-        "--num_hidden_nodes",
-        help="number of nodes in the hidden layers of the network",
+        "--rule_num_hidden_nodes",
+        "-rnhn",
+        help="number of nodes in the hidden layers of the rule model (default: [512,512])",
         type=int,
-        default=512,
+        nargs="+",
+        default=[512, 512],
+    )
+
+    parser.add_argument(
+        "--classification_embed_dim",
+        "-ced",
+        help="size of the embedding vector for each token in the classification model (default: 256)",
+        type=int,
+        default=256,
     )
     parser.add_argument(
-        "--network_name",
-        help="name of the network to be trained",
-        default="rule",
-        choices=["rule", "classification"],
-        type=str,
+        "--classification_num_hidden_nodes",
+        "-cnhn",
+        help="number of nodes in the hidden layers of the classification model (default: 256)",
+        type=int,
+        default=256,
     )
 
     args = parser.parse_args()

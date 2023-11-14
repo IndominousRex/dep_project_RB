@@ -41,3 +41,5 @@
 \bi|im\b\s+(\w+\s+){0,3}\bburden\b
 \bi\b\s+(\w+\s+){0,10}\bdepressed\b
 \bi\b\s+(\w+\s+){0,3}\b(end it)\b
+\bi\b\s+(\w+\s+){0,3}\bam|feel|feeling\b\s+(\w+\s+){0,3}\bstuck\b
+\bi\b\s+(\w+\s+){0,3}\bshould\b\s+(\w+\s+){0,3}\bbe|feel|feeling\bs+(\w+\s+){0,3}\bhappy\b

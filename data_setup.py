@@ -7,13 +7,15 @@ from torchtext.vocab import build_vocab_from_iterator
 from torch.utils.data import DataLoader
 
 RANDOM_STATE = 42
-device = "cuda:0"  # if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 random.seed(RANDOM_STATE)
-torch.set_default_device(device)
+# torch.set_default_device(device)
 
-vocab = None
-tokenizer = None
+vocab = tokenizer = None
+rules = pickle.load(open("data/rules.pkl", "rb"))
+exemplars = pickle.load(open("data/exemplars.pkl", "rb"))
+num_classes = 2
 
 
 # function to preprocess the text by removing links, numbers, hashtags, symbols and emoticons if any
@@ -24,7 +26,7 @@ def preprocess(text):
     text = re.sub(r"https?:\/\/\S+", "", text)
     text = re.sub(r"[\n]", " ", text)
     text = re.sub(r"['\",*%$#()]", " ", text)
-    text = re.sub(r"[.]", " . ", text)
+    # text = re.sub(r"[.]", " . ", text)
     text = text.encode("ascii", "ignore").decode("ascii")
     return text.strip()
 
@@ -44,7 +46,7 @@ def make_vocab(data):
     vocab = build_vocab_from_iterator(yield_tokens(data, tokenizer), specials=["<unk>"])
     vocab.set_default_index(vocab["<unk>"])
 
-    return vocab, tokenizer
+    return data, vocab, tokenizer
 
 
 # converting a token or a list of tokens into numbers
@@ -55,19 +57,53 @@ def stoi(x):
 
 # function to create the input tensor and the offsets from a input batch
 def collate_batch(batch):
+    batch_size = len(batch)
     label_list, text_list, offsets = [], [], [0]
+    rule_assigned_instance_labels = torch.zeros(batch_size, len(rules))
+    rule_exemplar_matrix = torch.zeros(batch_size, len(rules))
+    rule_coverage_matrix = torch.zeros(batch_size, len(rules))
+    labelled_flag_matrix = torch.zeros((batch_size, 1))
 
-    for _text, _label in batch:
-        label_list.append(_label)
-        processed_text = torch.tensor(stoi(_text), dtype=torch.int64)
+    for i in range(batch_size):
+        text = batch[i][0]
+        label = batch[i][1]
+
+        if label != num_classes:
+            labelled_flag_matrix[i] = 1
+
+        for j in range(len(rules)):
+            # compiling the regex
+            compiled_pattern = re.compile(rules[j], re.IGNORECASE)
+
+            # making sparse matrix where 1 denotes the ith datapoint is an exemplar for rule j
+            if text == preprocess(exemplars[j]):
+                rule_exemplar_matrix[i][j] = 1
+
+            # finding matching patterns
+            if bool(compiled_pattern.search(text)):
+                rule_assigned_instance_labels[i][j] = 1
+                rule_coverage_matrix[i][j] = 1
+            else:
+                rule_assigned_instance_labels[i][j] = num_classes
+
+        label_list.append(label)
+        processed_text = torch.tensor(stoi(text), dtype=torch.int64)
         text_list.append(processed_text)
         offsets.append(processed_text.size(0))
 
-    label_list = torch.tensor(label_list, dtype=torch.float32)
+    label_list = torch.tensor(label_list, dtype=torch.int64)
     offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)
     text_list = torch.cat(text_list)
 
-    return label_list.to(device), text_list.to(device), offsets.to(device)
+    return (
+        label_list,
+        text_list,
+        offsets,
+        rule_assigned_instance_labels,
+        rule_coverage_matrix,
+        labelled_flag_matrix,
+        rule_exemplar_matrix,
+    )
 
 
 # returing the created dataloaders to the caller function after making the vocab
@@ -79,28 +115,46 @@ def get_dataloaders(file_name, batch_size):
     data = pickle.load(open(f"data/{file_name}", "rb"))
 
     if vocab is None:
-        vocab, tokenizer = make_vocab(data)
+        data, vocab, tokenizer = make_vocab(data)
 
     print("Done!")
 
     data = random.sample(data, len(data))
 
-    # data = data[:350]
-
     print("Creating dataloaders...")
 
-    split = 0.3
-    split_index = int(len(data) * (1 - split))
-    train_data, test_data = data[:split_index], data[split_index:]
+    train_split = int(0.7 * len(data))
+    valid_split = train_split + int(0.15 * len(data))
+    train_data, valid_data, test_data = (
+        data[:train_split],
+        data[train_split:valid_split],
+        data[valid_split:],
+    )
 
     train_dataloader = DataLoader(
-        train_data, batch_size=batch_size, shuffle=True, collate_fn=collate_batch, generator=torch.Generator(device=device)  # type: ignore
+        train_data,  # type: ignore
+        batch_size=batch_size,
+        shuffle=True,
+        collate_fn=collate_batch,
+        # generator=torch.Generator(device=device),
+    )
+
+    valid_dataloader = DataLoader(
+        valid_data,  # type: ignore
+        batch_size=batch_size,
+        shuffle=True,
+        collate_fn=collate_batch,
+        # generator=torch.Generator(device=device),
     )
 
     test_dataloader = DataLoader(
-        test_data, batch_size=batch_size, shuffle=True, collate_fn=collate_batch, generator=torch.Generator(device=device)  # type: ignore
+        test_data,  # type: ignore
+        batch_size=batch_size,
+        # shuffle=True,
+        collate_fn=collate_batch,
+        # generator=torch.Generator(device=device),
     )
 
     print("Done!")
 
-    return train_dataloader, test_dataloader, len(vocab)
+    return train_dataloader, valid_dataloader, test_dataloader, vocab

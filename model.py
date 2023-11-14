@@ -1,9 +1,8 @@
 from torch import nn
-import torch
 
 
 class ClassificationNetwork(nn.Module):
-    def __init__(self, vocab_size, embed_dim, num_nodes, num_class, embedding_matrix):
+    def __init__(self, vocab_size, embed_dim, num_nodes, num_class):
         super(ClassificationNetwork, self).__init__()
 
         # self.glove_embedding = nn.EmbeddingBag.from_pretrained(
@@ -42,15 +41,15 @@ class RuleNetwork(nn.Module):
 
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=False)
         self.MLP = nn.Sequential(
-            nn.Linear(embed_dim, num_nodes),
-            nn.LayerNorm(num_nodes),
+            nn.Linear(embed_dim, num_nodes[0]),
+            nn.LayerNorm(num_nodes[0]),
             nn.ReLU(),
             # nn.Dropout(),
-            nn.Linear(num_nodes, num_nodes),
-            nn.LayerNorm(num_nodes),
+            nn.Linear(num_nodes[0], num_nodes[1]),
+            nn.LayerNorm(num_nodes[1]),
             nn.ReLU(),
             # nn.Dropout(),
-            nn.Linear(num_nodes, num_class),
+            nn.Linear(num_nodes[1], num_class),
         )
 
         self.embedding.apply(self.init_weights)
