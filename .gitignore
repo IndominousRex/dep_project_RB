@@ -4,3 +4,4 @@ dummy.ipynb
 project.ipynb
 multiprocessing.ipynb
 /.vscode
+__pycache__
