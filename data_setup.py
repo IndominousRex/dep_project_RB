@@ -62,7 +62,7 @@ def collate_batch(batch):
     rule_assigned_instance_labels = torch.zeros(batch_size, len(rules))
     rule_exemplar_matrix = torch.zeros(batch_size, len(rules))
     rule_coverage_matrix = torch.zeros(batch_size, len(rules))
-    labelled_flag_matrix = torch.zeros((batch_size, 1))
+    labelled_flag_matrix = torch.zeros((batch_size))
 
     for i in range(batch_size):
         text = batch[i][0]

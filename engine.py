@@ -252,7 +252,7 @@ def test_step(
             rule_network_logits = rule_model(X, offsets)
             rule_network_probs = rule_network_logits.sigmoid()
             classification_network_logits = classification_model(X, offsets)
-            classification_network_probs = classification_network_logits.sigmoid()
+            classification_network_probs = torch.sigmoid(classification_network_logits)
 
             joint_score = get_joint_score(
                 one_hot_rule_classes,
@@ -335,6 +335,7 @@ def train(
 
     # Loop through training and testing steps for a number of epochs
     for epoch in tqdm(range(epochs)):
+        # train_loss, train_acc, train_precision, train_recall, train_f1 = 0, 0, 0, 0, 0
         train_loss, train_acc, train_precision, train_recall, train_f1 = train_step(
             classification_model,
             rule_model,

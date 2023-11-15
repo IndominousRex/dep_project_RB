@@ -145,7 +145,7 @@ def compute_LL_phi(
 
     loss += gcross_loss  # (batch_size,num_rules)
     loss = torch.sum(loss, -1)  # (16)
-    loss = loss * labelled_flag_matrix  # (16,16)
+    loss = loss * labelled_flag_matrix  # (16)
     loss = torch.mean(loss)  # ()
 
     return loss
@@ -175,7 +175,7 @@ def compute_implication_loss(
     num_classes,
     labelled_flag_matrix,
 ):
-    psi = 1e-25  # a small value to avoid nans
+    psi = 1e-20  # a small value to avoid nans
 
     one_hot_mask = (
         F.one_hot(rule_classes, num_classes).float().to(device)
@@ -189,11 +189,12 @@ def compute_implication_loss(
     )  # (Argument of log in equation 4)
 
     # computing last term of equation 5, will multiply with gamma outside this function
+    # print(obj)
     obj = rule_coverage_matrix * torch.log(obj + psi)  # (batch_size,num_rules)
     obj = torch.sum(obj, -1)  # (16)
     obj = obj * (
         1 - labelled_flag_matrix
-    )  # defined only for instances in U, so mask by (1-d) # (batch_size,batch_size)
+    )  # defined only for instances in U, so mask by (1-d) # (batch_size)
 
     obj = torch.mean(obj)  # ()
     return -obj
@@ -218,8 +219,8 @@ def compute_loss(
     labels_one_hot = F.one_hot(labels, num_classes).float()  # (batch_size,2)
     LL_theta = F.binary_cross_entropy_with_logits(
         classification_network_logits, labels_one_hot, reduction="none"
-    )
-    LL_theta = (labelled_flag_matrix * LL_theta).mean()
+    )  # (batch_size,2)
+    LL_theta = (labelled_flag_matrix.unsqueeze(-1) * LL_theta).mean()
 
     LL_phi = compute_LL_phi(
         rule_network_logits,
@@ -241,9 +242,6 @@ def compute_loss(
         labelled_flag_matrix,
     )
 
-    # print(
-    #     f"LL_phi shape = {LL_phi.shape}, LL_theta shape = {LL_theta.shape}, implication_loss shape = {implication_loss.shape}"
-    # )
     # print(
     #     f"\nLL_phi = {LL_phi}, LL_theta = {LL_theta}, implication_loss = {implication_loss}"
     # )
