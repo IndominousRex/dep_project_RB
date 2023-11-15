@@ -5,3 +5,5 @@ project.ipynb
 multiprocessing.ipynb
 /.vscode
 __pycache__
+*.pyc
+.vscode
