@@ -1,18 +1,16 @@
-from torch import nn
+from torch import dropout, nn
+import transformers
 
 
 class ClassificationNetwork(nn.Module):
-    def __init__(self, vocab_size, embed_dim, num_nodes, num_class):
+    def __init__(self, vocab_size, embed_dim, num_nodes, num_class, dropout_prob):
         super(ClassificationNetwork, self).__init__()
 
-        # self.glove_embedding = nn.EmbeddingBag.from_pretrained(
-        #     embedding_matrix, freeze=True
-        # )
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim)
         self.dense_block = nn.Sequential(
             nn.Linear(embed_dim, num_nodes),
             nn.ReLU(),
-            nn.Dropout(0.5),
+            nn.Dropout(dropout_prob),
             nn.Linear(num_nodes, num_class),
         )
 
@@ -27,28 +25,22 @@ class ClassificationNetwork(nn.Module):
             layer.bias.data.zero_()
 
     def forward(self, text, offsets):
-        # combined_embedding = torch.cat(
-        #     [self.embedding(text, offsets), self.glove_embedding(text, offsets)],
-        #     dim=-1,
-        # )
         embedded = self.embedding(text, offsets)
         return self.dense_block(embedded)
 
 
 class RuleNetwork(nn.Module):
-    def __init__(self, vocab_size, embed_dim, num_nodes, num_class):
+    def __init__(self, vocab_size, embed_dim, num_nodes, num_class, dropout_prob):
         super(RuleNetwork, self).__init__()
 
         self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, sparse=False)
         self.MLP = nn.Sequential(
             nn.Linear(embed_dim, num_nodes[0]),
-            nn.LayerNorm(num_nodes[0]),
             nn.ReLU(),
-            # nn.Dropout(),
+            nn.Dropout(dropout_prob),
             nn.Linear(num_nodes[0], num_nodes[1]),
-            nn.LayerNorm(num_nodes[1]),
             nn.ReLU(),
-            # nn.Dropout(),
+            nn.Dropout(dropout_prob),
             nn.Linear(num_nodes[1], num_class),
         )
 
@@ -56,11 +48,12 @@ class RuleNetwork(nn.Module):
         self.MLP.apply(self.init_weights)
 
     def init_weights(self, layer):
-        initrange = 0.5
-
-        if isinstance(layer, nn.Linear or nn.EmbeddingBag):
-            layer.weight.data.uniform_(-initrange, initrange)
-            layer.bias.data.zero_()
+        if isinstance(layer, nn.Linear):
+            nn.init.kaiming_uniform_(layer.weight, nonlinearity="relu")
+            if layer.bias is not None:
+                layer.bias.data.zero_()
+        elif isinstance(layer, nn.EmbeddingBag):
+            layer.weight.data.uniform_(-0.5, 0.5)
 
     def forward(self, text, offsets):
         embedded = self.embedding(text, offsets)

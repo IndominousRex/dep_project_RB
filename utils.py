@@ -117,35 +117,42 @@ def compute_LL_phi(
     num_rules,
 ):
     labels = labels.unsqueeze(-1).repeat((1, num_rules))  # (batch_size,num_rules)
-    rule_labels_equals_true_labels = (rule_assigned_instance_labels == labels).to(
-        torch.float32
-    )  # (batch_size,num_rules)
-    rule_labels_not_equals_true_labels = (rule_assigned_instance_labels != labels).to(
-        torch.float32
-    )  # (batch_size,num_rules)
+    rule_labels_equals_true_labels = (
+        rule_assigned_instance_labels == labels
+    ).float()  # (batch_size,num_rules)
+    rule_labels_not_equals_true_labels = (
+        rule_assigned_instance_labels != labels
+    ).float()  # (batch_size,num_rules)
 
     loss = F.binary_cross_entropy_with_logits(
         rule_network_logits, rule_labels_equals_true_labels, reduction="none"
     )  # (batch_size,num_rules)
+    # print(loss, "1")
 
-    loss *= rule_coverage_matrix  # (batch_size,num_rules)
+    loss = rule_coverage_matrix * loss  # (batch_size,num_rules)
+    # print(loss, "2")
     loss = (rule_labels_not_equals_true_labels * loss) + (
         rule_labels_equals_true_labels * rule_exemplar_matrix * loss
     )  # (batch_size,num_rules)
+    # print(loss, "3")
 
     gcross_loss = generalized_cross_entropy_bernoulli(
         rule_network_probs, 0.2
     )  # (batch_size,num_rules)
+    # print(gcross_loss, "4")
     gcross_loss = (
         gcross_loss
         * rule_coverage_matrix
         * rule_labels_equals_true_labels
         * (1 - rule_exemplar_matrix)
     )  # (batch_size,num_rules)
+    # print(gcross_loss, "5")
 
     loss += gcross_loss  # (batch_size,num_rules)
+    # print(loss, "6")
     loss = torch.sum(loss, -1)  # (16)
     loss = loss * labelled_flag_matrix  # (16)
+    # print(loss, "7")
     loss = torch.mean(loss)  # ()
 
     return loss

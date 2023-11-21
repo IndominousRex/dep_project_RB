@@ -26,7 +26,7 @@ def preprocess(text):
     text = re.sub(r"https?:\/\/\S+", "", text)
     text = re.sub(r"[\n]", " ", text)
     text = re.sub(r"['\",*%$#()]", " ", text)
-    # text = re.sub(r"[.]", " . ", text)
+    text = re.sub(r"[.]", " . ", text)
     text = text.encode("ascii", "ignore").decode("ascii")
     return text.strip()
 
@@ -68,15 +68,12 @@ def collate_batch(batch):
         text = batch[i][0]
         label = batch[i][1]
 
-        if label != num_classes:
-            labelled_flag_matrix[i] = 1
-
         for j in range(len(rules)):
             # compiling the regex
             compiled_pattern = re.compile(rules[j], re.IGNORECASE)
 
             # making sparse matrix where 1 denotes the ith datapoint is an exemplar for rule j
-            if text == preprocess(exemplars[j]):
+            if text == preprocess(exemplars[j][0]):
                 rule_exemplar_matrix[i][j] = 1
 
             # finding matching patterns
@@ -85,6 +82,9 @@ def collate_batch(batch):
                 rule_coverage_matrix[i][j] = 1
             else:
                 rule_assigned_instance_labels[i][j] = num_classes
+
+        if label != num_classes:
+            labelled_flag_matrix[i] = 1
 
         label_list.append(label)
         processed_text = torch.tensor(stoi(text), dtype=torch.int64)
@@ -119,8 +119,6 @@ def get_dataloaders(file_name, batch_size):
 
     print("Done!")
 
-    data = random.sample(data, len(data))
-
     print("Creating dataloaders...")
 
     train_split = int(0.7 * len(data))
@@ -134,7 +132,7 @@ def get_dataloaders(file_name, batch_size):
     train_dataloader = DataLoader(
         train_data,  # type: ignore
         batch_size=batch_size,
-        shuffle=True,
+        # shuffle=True,
         collate_fn=collate_batch,
         # generator=torch.Generator(device=device),
     )
@@ -142,7 +140,7 @@ def get_dataloaders(file_name, batch_size):
     valid_dataloader = DataLoader(
         valid_data,  # type: ignore
         batch_size=batch_size,
-        shuffle=True,
+        # shuffle=True,
         collate_fn=collate_batch,
         # generator=torch.Generator(device=device),
     )

@@ -20,6 +20,7 @@ NUM_EPOCHS = args.epochs
 LEARNING_RATE = args.learning_rate
 PATIENCE = args.patience
 BATCH_SIZE = args.batch_size
+DROPOUT_PROB = args.dropout_prob
 
 RULE_EMBED_DIM = args.rule_embed_dim
 RULE_NUM_NODES = args.rule_num_hidden_nodes
@@ -55,9 +56,12 @@ classification_model = ClassificationNetwork(
     CLASSIFICATION_EMBED_DIM,
     CLASSIFICATION_NUM_NODES,
     CLASSIFICATION_NUM_LABELS,
+    DROPOUT_PROB,
 )
 
-rule_model = RuleNetwork(len(vocab), RULE_EMBED_DIM, RULE_NUM_NODES, RULE_NUM_LABELS)
+rule_model = RuleNetwork(
+    len(vocab), RULE_EMBED_DIM, RULE_NUM_NODES, RULE_NUM_LABELS, DROPOUT_PROB
+)
 
 # setting and optimizer
 combined_parameters = chain(classification_model.parameters(), rule_model.parameters())
@@ -100,13 +104,13 @@ results = train(
 )
 
 best_loss = min(results["test_loss"])
-final_loss = results["test_loss"][-1]
+# final_loss = results["test_loss"][-1]
 
 # saving model results in pickle file
 pickle.dump(
     results,
     open(
-        f"results/bestloss{best_loss:.2f}_model_{RULE_MODEL_NAME}_{CLASSIFICATION_MODEL_NAME}_results.pkl",
+        f"results/bestloss{best_loss:.4f}_model_{RULE_MODEL_NAME}_{CLASSIFICATION_MODEL_NAME}_results.pkl",
         "wb",
     ),
     protocol=-1,

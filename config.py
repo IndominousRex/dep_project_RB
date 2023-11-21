@@ -32,6 +32,13 @@ def parse_arguments():
         type=int,
         default=16,
     )
+    parser.add_argument(
+        "--dropout_prob",
+        "-dp",
+        help="dropout probablility for both models (default: 0.5)",
+        type=float,
+        default=0.5,
+    )
 
     parser.add_argument(
         "--rule_embed_dim",

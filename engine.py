@@ -150,7 +150,8 @@ def train_step(
         )
         train_pred = joint_score.argmax(1)
 
-        train_loss = compute_loss(
+        # 2. Calculating and accumulating loss
+        loss = compute_loss(
             num_classes,
             rule_labels,
             rule_network_logits,
@@ -165,12 +166,13 @@ def train_step(
             num_rules,
             gamma,
         )
+        train_loss += loss.item()
 
         # 3. Optimizer zero grad
         optimizer.zero_grad()
 
         # 4. Loss backward
-        train_loss.backward()
+        loss.backward()
 
         # 5. Optimizer step
         optimizer.step()
@@ -209,7 +211,7 @@ def test_step(
     test_loss, test_acc, test_precision, test_recall, test_f1 = 0, 0, 0, 0, 0
 
     # Using inference mode the disable gradient backpropagaton
-    with torch.inference_mode():
+    with torch.no_grad():
         # Loop through DataLoader batches
         for _, (
             labels,
@@ -262,11 +264,12 @@ def test_step(
             )
             test_pred = joint_score.argmax(1)
 
-            test_loss = compute_loss(
+            # 2. Calculating and accumulating loss
+            loss = compute_loss(
                 num_classes,
                 rule_labels,
-                rule_network_probs,
                 rule_network_logits,
+                rule_network_probs,
                 classification_network_logits,
                 classification_network_probs,
                 rule_assigned_instance_labels,
@@ -277,6 +280,7 @@ def test_step(
                 num_rules,
                 gamma,
             )
+            test_loss += loss.item()
 
             test_acc += acc_fn(test_pred, labels).cpu().numpy()
             test_precision += prec_fn(test_pred, labels).cpu().numpy()
@@ -331,7 +335,7 @@ def train(
 
     best_loss = torch.inf
     best_epoch = 0
-    early_stop_threshold = 10
+    early_stop_threshold = 20
 
     # Loop through training and testing steps for a number of epochs
     for epoch in tqdm(range(epochs)):
@@ -348,6 +352,7 @@ def train(
             f1_fn,
         )
 
+        # test_loss, test_acc, test_precision, test_recall, test_f1 = 0, 0, 0, 0, 0
         test_loss, test_acc, test_precision, test_recall, test_f1 = test_step(
             classification_model,
             rule_model,
@@ -364,13 +369,14 @@ def train(
         if test_loss < best_loss:
             best_epoch = epoch
             best_loss = test_loss
+            print("\n")
             save_model(
                 classification_model,
-                f"classification_{classification_model_name}_best_model.pth",
+                f"{classification_model_name}_best_model.pth",
             )
             save_model(
                 rule_model,
-                f"rule_{rule_model_name}_best_model.pth",
+                f"{rule_model_name}_best_model.pth",
             )
 
         elif epoch - best_epoch > early_stop_threshold:
@@ -390,8 +396,9 @@ def train(
             f"test_acc: {test_acc:.4f} | "
             f"test_prec: {test_precision:.4f} | "
             f"test_recall: {test_recall:.4f} | "
-            f"test_f1: {test_f1:.4f} | \n"
+            f"test_f1: {test_f1:.4f} |"
         )
+        print("\n")
 
         # Update results dictionary
         results["train_loss"].append(train_loss)
